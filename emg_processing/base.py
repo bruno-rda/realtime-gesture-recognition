@@ -1,9 +1,16 @@
 import numpy as np
 import pandas as pd
+from typing import Optional, NamedTuple, Any
 from feature_extraction import FeatureExtractor
 import logging
 
 logger = logging.getLogger(__name__)
+
+class DataSplit(NamedTuple):
+    X: pd.DataFrame
+    y: pd.Series
+    groups: pd.Series
+    label_mapping: dict[int, Any]
 
 class EMGProcessor:
     def __init__(self, feature_extractor: FeatureExtractor):
@@ -76,16 +83,22 @@ class EMGProcessor:
         df: pd.DataFrame, 
         sampling_rate: int, 
         window_size: float, 
-        step_size: float
-    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        step_size: float,
+        ignore_labels: Optional[list[Any]] = None
+    ) -> DataSplit:
         """
-        Get the X, y, and groups from the dataframe.
+        Get the X, y, groups, and label mapping from the dataframe.
+        Rows that contain ignored labels are filtered out.
         """
         logger.info(f'Initial DF shape: {df.shape}')
-        ebr_channels = df.columns.difference(['TIMESTAMP', 'label', 'group'])
 
+        # Select signal channels
+        signal_columns = df.columns.difference(['TIMESTAMP', 'label', 'group'])
+        signal_data = df[signal_columns].values
+
+        # Process the signals
         X = self.process(
-            signals=df[ebr_channels].values,
+            signals=signal_data,
             window_size=window_size, 
             step_size=step_size, 
             sampling_rate=sampling_rate
@@ -98,18 +111,31 @@ class EMGProcessor:
             sampling_rate=sampling_rate
         )
 
+        # Add labels and groups to the dataframe
         df_out = pd.DataFrame(X)
         df_out.dropna(inplace=True, axis=1)
-        logger.info(f'Processed DF shape: {df_out.shape}')
-
-        # Add labels and groups to the dataframe
         df_out['label'] = y
         df_out['group'] = groups
 
-        # Keep only valid labels
-        df_out = df_out[~df_out['label'].isin([0, 100, 101])]
-        X = df_out.drop(columns=['label', 'group'])
-        y = df_out['label'] - 1
-        logger.info(f'Final DF shape: {df_out.shape}')
+        if ignore_labels is not None:
+            # Filter out ignored labels
+            df_out = df_out[~df_out['label'].isin(ignore_labels)]
+
+        # Get the X, y, groups, and label mapping
+        X_final = df_out.drop(columns=['label', 'group'])
+        label_cat = df_out['label'].astype('category')
+        y_encoded = label_cat.cat.codes
+        groups_final = df_out['group']
+
+        # Map the encoded labels to the original labels
+        label_mapping = dict(enumerate(label_cat.cat.categories))
         
-        return X, y, df_out['group']
+        logger.info(f'Final DF shape: {df_out.shape}')
+        logger.info(f'Label mapping: {label_mapping}')
+        
+        return DataSplit(
+            X=X_final,
+            y=y_encoded,
+            groups=groups_final,
+            label_mapping=label_mapping
+        )
