@@ -88,6 +88,8 @@ class Controller:
                 match key:
                     case 'q':
                         self.current_label = None
+                        # Advance group to separate this trial batch
+                        self.trainer.switch_group()
                         self.switch_mode('main')
                     case 'h':
                         print(MENUS['data_collection'])
