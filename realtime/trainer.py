@@ -70,7 +70,10 @@ class RealTimeTrainer:
         
         assert label is not None, 'Label cannot be None'
 
-        self.curr_steps += 1
+        if rows.ndim == 1:
+            rows = np.expand_dims(rows, axis=0)
+
+        self.curr_steps += rows.shape[0]
         columns = [f'EBR_{i + 1}' for i in range(rows.shape[-1] - 1)] + ['TIMESTAMP']
 
         df_row = pd.DataFrame(rows, columns=columns)
