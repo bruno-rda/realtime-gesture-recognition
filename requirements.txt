@@ -47,6 +47,12 @@ pydantic==2.11.9
 pydantic-settings==2.10.1
 pydantic_core==2.33.2
 Pygments==2.19.2
+pynput==1.8.1
+pyobjc-core==11.1
+pyobjc-framework-ApplicationServices==11.1
+pyobjc-framework-Cocoa==11.1
+pyobjc-framework-CoreText==11.1
+pyobjc-framework-Quartz==11.1
 pyparsing==3.2.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
