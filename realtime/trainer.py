@@ -48,8 +48,8 @@ class RealTimeTrainer:
         return {
             # Data information
             'shape': self.df.shape,
-            'labels': self.df['label'].unique() if not self.df.empty else [],
-            'n_groups': len(self.df['group'].unique()) if not self.df.empty else 0,
+            'labels': self.df['label'].unique().tolist(),
+            'n_groups': len(self.df['group'].unique()),
 
             # Processing information
             'sampling_rate': self.sampling_rate,
