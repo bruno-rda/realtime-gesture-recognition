@@ -1,5 +1,6 @@
 import os
 import json
+import pickle
 import joblib
 import numpy as np
 import pandas as pd
@@ -41,6 +42,11 @@ class RealTimeTrainer:
         self.base_dir = base_dir
 
         self.label_mapping: Optional[dict[int, Any]] = None
+    
+    @classmethod
+    def from_path(cls, path: str) -> 'RealTimeTrainer':
+        with open(path, 'rb') as f:
+            return pickle.load(f)
     
     @property
     def metadata(self) -> dict[str, Any]:
@@ -146,6 +152,9 @@ class RealTimeTrainer:
             # Metadata about the experiment and the model
             with open(f'{new_exp_dir}/metadata.json', 'w') as f:
                 json.dump(self.metadata, f, indent=4, default=str)
+
+            with open(f'{new_exp_dir}/trainer.pkl', 'wb') as f:
+                pickle.dump(self, f)
 
             logger.info(f'Model saved to: {new_exp_dir}')
             return new_exp_dir
