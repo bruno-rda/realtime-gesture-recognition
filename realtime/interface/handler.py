@@ -16,16 +16,17 @@ class InterfaceHandler:
         self, 
         trainer: RealTimeTrainer, 
         predictor: RealTimePredictor,
-        communicator: Optional[SerialCommunicator] = None,
-        starting_mode: MenuState = MenuState.MAIN
+        communicator: Optional[SerialCommunicator] = None
     ):
         self.trainer = trainer
         self.predictor = predictor
         self.communicator = communicator
         
-        self.current_mode = starting_mode
         self.current_label = None
-        
+        self.current_mode = (
+            MenuState.MAIN if trainer.training else MenuState.PREDICTION
+        )
+
         self.command_handler = CommandHandler(self)
         self.commands: Dict[MenuState, Dict[str, Command]] = get_command_mapping(self.command_handler)
         
@@ -86,10 +87,10 @@ class InterfaceHandler:
                     pred = self.predictor.update(row)
 
                     if pred is not None:
-                        print(f'\r[Prediction Mode] Prediction: {pred}', end='', flush=True)
+                        mapped_pred = self.trainer.label_mapping.get(pred, pred)
+                        print(f'\r[Prediction Mode] Prediction: {mapped_pred}', end='', flush=True)
 
                         if self.communicator and self.communicator.is_active:
-                            mapped_pred = self.trainer.label_mapping[pred]
                             self.communicator.send(mapped_pred)
     
     def start(self):
