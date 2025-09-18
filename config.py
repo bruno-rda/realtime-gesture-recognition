@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 from pydantic_settings import BaseSettings
 import logging
 
@@ -17,11 +17,13 @@ class Settings(BaseSettings):
     serial_port: str = 'COM3'
     serial_baudrate: int = 9600
     serial_timeout: float = 1
+    message_mapping: Optional[dict[Any, Any]] = None
 
     # Model training
     cross_validate: bool = True
     should_save: bool = True
-    base_dir: str = './realtime/experiments'
+    experiments_base_dir: str = './realtime/experiments'
+    trainer_path: Optional[str] = None
 
     # Model hyperparameters
     feature_selector_percentile: int = 90
