@@ -1,0 +1,118 @@
+from dataclasses import dataclass
+from typing import Callable, Optional
+from realtime.interface.menus import MenuState
+
+@dataclass
+class Command:
+    key: str
+    description: str
+    action: Callable[[], None]
+    short_description: Optional[str] = None
+    next_state: Optional[MenuState] = None
+
+    def __post_init__(self):
+        if self.short_description is None:
+            self.short_description = self.description
+
+class CommandHandler:
+    def __init__(self, controller):
+        self.controller = controller
+    
+    def prompt_for_label(self):
+        self.controller.current_label = input('Enter label: ')
+    
+    def train_model(self):
+        self.controller.trainer.train()
+    
+    def save_trainer(self):
+        self.controller.trainer.save()
+    
+    def quit_data_collection(self):
+        self.controller.trainer.switch_group()
+    
+    def _confirm(self, message: str):
+        return input(f'{message} (y/n): ').lower() == 'y'
+    
+    def reset_all(self):
+        if self._confirm('Are you sure you want to reset all data and the model?'):
+            self.controller.trainer.reset()
+    
+    def reset_model(self):
+        if self._confirm('Are you sure you want to reset the model?'):
+            self.controller.trainer.reset_model()
+    
+    def print_menu(self):
+        self.controller.print_menu()
+
+def get_command_mapping(
+    handler: CommandHandler
+) -> dict[MenuState, dict[str, Command]]:
+    
+    return {
+        MenuState.MAIN: {
+            'a': Command(
+                key='a',
+                description='Prompt for label and start data collection  → switches to Data Collection Mode',
+                short_description='Prompt for label and start data collection',
+                action=handler.prompt_for_label,
+                next_state=MenuState.DATA_COLLECTION
+            ),
+            't': Command(
+                key='t',
+                description='Train the model                             → switches to Prediction Mode',
+                short_description='Train the model',
+                action=handler.train_model,
+                next_state=MenuState.PREDICTION
+            ),
+            's': Command(
+                key='s',
+                description='Save trainer information',
+                action=handler.save_trainer
+            ),
+            'h': Command(
+                key='h',
+                description='Show this menu help',
+                action=handler.print_menu
+            )
+        },
+        MenuState.DATA_COLLECTION: {
+            'q': Command(
+                key='q',
+                description='Quit sample collection                     → returns to Main Mode',
+                short_description='Quit sample collection',
+                action=handler.quit_data_collection,
+                next_state=MenuState.MAIN
+            ),
+            'h': Command(
+                key='h',
+                description='Show this menu help',
+                action=handler.print_menu
+            )
+        },
+        MenuState.PREDICTION: {
+            's': Command(
+                key='s',
+                description='Save trainer information',
+                action=handler.save_trainer
+            ),
+            'r': Command(
+                key='r',
+                description='Reset all data and the model               → returns to Main Mode',
+                short_description='Reset all data and the model',
+                action=handler.reset_all,
+                next_state=MenuState.MAIN
+            ),
+            'm': Command(
+                key='m',
+                description='Reset the model only                       → returns to Main Mode',
+                short_description='Reset the model only',
+                action=handler.reset_model,
+                next_state=MenuState.MAIN
+            ),
+            'h': Command(
+                key='h',
+                description='Show this menu help',
+                action=handler.print_menu
+            )
+        }
+    }

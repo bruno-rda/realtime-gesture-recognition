@@ -4,7 +4,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectPercentile, f_classif
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-from realtime import RealTimeTrainer, RealTimePredictor
+from realtime import RealTimeTrainer, RealTimePredictor, InterfaceHandler
 from emg_processing import ManualProcessor
 from feature_extraction import ManualFeatureExtractor
 from config import get_settings
@@ -47,6 +47,8 @@ predictor = RealTimePredictor(
     sampling_rate=settings.sampling_rate,
 )
 
+interface = InterfaceHandler(trainer, predictor)
+
 def receive_packets(sock, queue, stop_event):
     logger.info('Starting receiver thread')
     while not stop_event.is_set():
@@ -73,6 +75,7 @@ if __name__ == '__main__':
         daemon=True
     )
     receiver_thread.start()
+    interface.start()
 
     try:
         while True:
@@ -86,15 +89,9 @@ if __name__ == '__main__':
             n_package_samples = len(data) // settings.n_channels
             data = np.array(data).reshape(n_package_samples, settings.n_channels)
 
-            if trainer.training:
-                trainer.update(data)
-            else:
-                for row in data:
-                    pred = predictor.update(row)
-                    
-                    if pred is not None:
-                        print(f'\rPrediction: {pred}', end='', flush=True)
-    
+            # Update the controller with the new data
+            interface.update(data)
+
     except KeyboardInterrupt:
         logger.info('Keyboard interrupt detected. Exiting...')
         
@@ -106,3 +103,4 @@ if __name__ == '__main__':
         stop_event.set()
         sock.close()
         receiver_thread.join()
+        interface.stop()

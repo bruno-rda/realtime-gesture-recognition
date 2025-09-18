@@ -1,8 +1,9 @@
 import os
+import json
 import joblib
 import numpy as np
 import pandas as pd
-from typing import Optional
+from typing import Optional, Any
 from sklearn.base import clone
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_val_score, StratifiedGroupKFold
@@ -19,7 +20,6 @@ class RealTimeTrainer:
         window_size: float,
         step_size: float,
         sampling_rate: int,
-        trial_ms: int = 10000,
         cross_validate: bool = False,
         should_save: bool = True,
         base_dir: str = './realtime/experiments'
@@ -32,38 +32,44 @@ class RealTimeTrainer:
 
         self.pipeline = pipeline
         self.training = True
-        self.curr_label = None
         self.curr_group = 0
         self.curr_steps = 0
-        self.max_steps = sampling_rate * trial_ms / 1000
+
+        # Training parameters
         self.cross_validate = cross_validate
         self.should_save = should_save
         self.base_dir = base_dir
     
-    def update(self, rows: np.ndarray) -> None:
+    @property
+    def metadata(self) -> dict[str, Any]:
+        def get_class_name(obj: Any) -> str:
+            return obj.__class__.__name__
+        
+        return {
+            # Data information
+            'shape': self.df.shape,
+            'labels': self.df['label'].unique().tolist(),
+            'n_groups': len(self.df['group'].unique()),
+
+            # Processing information
+            'sampling_rate': self.sampling_rate,
+            'window_size': self.window_size,
+            'step_size': self.step_size,
+            'processor_class': get_class_name(self.processor),
+            'feature_extractor_class': get_class_name(self.processor.feature_extractor),
+            'feature_extractor_params': self.processor.feature_extractor.__dict__,
+
+            # Model information
+            'pipeline_params': self.pipeline.get_params(deep=True),
+        }
+    
+    def update(self, rows: np.ndarray, label: Any) -> None:
         # If not training, do nothing
         if not self.training:
             return
-
-        if self.curr_label is None:
-            while not isinstance(self.curr_label, int):
-                try:
-                    self.curr_label = int(input("Enter the label: "))
-                except ValueError:
-                    print("Invalid label. Please enter an integer.")
-            
-            if self.curr_label == -1:
-                self.train()
-
-            return
-
-        # If max steps is reached, reset label and start a new group
-        if self.curr_steps >= self.max_steps:
-            self.curr_steps = 0
-            self.curr_group += 1
-            self.curr_label = None
-            return
         
+        assert label is not None, 'Label cannot be None'
+
         if rows.ndim == 1:
             rows = np.expand_dims(rows, axis=0)
 
@@ -71,16 +77,24 @@ class RealTimeTrainer:
         columns = [f'EBR_{i + 1}' for i in range(rows.shape[-1] - 1)] + ['TIMESTAMP']
 
         df_row = pd.DataFrame(rows, columns=columns)
-        df_row['label'] = self.curr_label + 1
+        df_row['label'] = label
         df_row['group'] = self.curr_group
 
         self.df = pd.concat([self.df, df_row], ignore_index=True)
+    
+    def switch_group(self) -> None:
+        self.curr_group += 1
+        self.curr_steps = 0
 
     def train(self) -> None:
-        logger.info(f'Starting data processing')
+        assert self.training, 'Cannot train if not in training mode'
+
+        if self.df.empty:
+            raise ValueError('Cannot train if no data has been collected')
+        
         self.training = False
 
-        X, y, groups = self.processor.get_X_y_groups(
+        X, y, groups, _ = self.processor.get_X_y_groups(
             df=self.df, 
             sampling_rate=self.sampling_rate,
             window_size=self.window_size, 
@@ -99,10 +113,8 @@ class RealTimeTrainer:
                 n_jobs=-1
             )
 
-            logger.info('=== Cross-validation scores ===')
-            logger.info(f'Mean accuracy: {scores.mean():.5f}')
-            logger.info(f'Standard deviation: {scores.std():.5f}')
-            logger.info(f'All scores: {np.array2string(scores, precision=5)}')
+            logger.info(f'Cross-validation completed - Mean: {scores.mean():.5f} (±{scores.std():.5f})')
+            logger.debug(f'All CV scores: {np.array2string(scores, precision=5)}')
         
         self.pipeline.fit(X, y)
         logger.info('Training completed.')
@@ -111,34 +123,50 @@ class RealTimeTrainer:
             self.save()
 
     def save(self) -> Optional[str]:
+        if self.df.empty:
+            logger.warning('Model was not saved because no data has been collected')
+            return
+        
         try:
             os.makedirs(self.base_dir, exist_ok=True)
             
             existing = os.listdir(self.base_dir)
             next_num = max(int(x) for x in existing if x.isdigit()) + 1 if existing else 0
-
             new_exp_dir = f'{self.base_dir}/{next_num}'
             os.makedirs(new_exp_dir)
 
-            # Save files in the new directory
+            # Save recovered data
             self.df.to_csv(f'{new_exp_dir}/emg_data.csv')
-            joblib.dump(self.pipeline, f'{new_exp_dir}/pipeline.joblib')
-            logger.info(f'Model saved to {new_exp_dir}...')
+
+            # Save the model if has been trained
+            if not self.training:
+                joblib.dump(self.pipeline, f'{new_exp_dir}/pipeline.joblib')
+            
+            # Metadata about the experiment and the model
+            with open(f'{new_exp_dir}/metadata.json', 'w') as f:
+                json.dump(self.metadata, f, indent=4, default=str)
+
+            logger.info(f'Model saved to: {new_exp_dir}')
             return new_exp_dir
 
         except Exception as e:
-            logger.error(f'Error saving: {e}')
+            raise RuntimeError(f'Error saving: {e}')
     
-    def switch_to_training(self) -> None:
-        logger.info('Switching to training mode...')
+    def reset_model(self) -> None:
+        """ 
+        Resets the model to its initial training state. 
+        This method is useful if you want to further train the model
+        without losing the data collected so far.
+        """
         self.training = True
-        self.curr_label = None
         self.pipeline = clone(self.pipeline)
 
     def reset(self) -> None:
-        logger.info('Resetting trainer...')
+        """
+        Clears all collected data and resets the model's state. 
+        This allows starting a new training session from scratch.
+        """
         self.df = pd.DataFrame()
-        self.curr_label = None
         self.curr_group = 0
         self.curr_steps = 0
         self.training = True
