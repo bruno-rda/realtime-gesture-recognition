@@ -1,18 +1,29 @@
 import numpy as np
 import logging
 from pynput import keyboard
-from typing import Dict
+from typing import Dict, Optional
 from realtime.interface.menus import MenuState, MENU_INFO
 from realtime.interface.commands import CommandHandler, Command, get_command_mapping
+from realtime.trainer import RealTimeTrainer
+from realtime.predictor import RealTimePredictor
+from realtime.communicator import SerialCommunicator
 
 logger = logging.getLogger(__name__)
 
 
 class InterfaceHandler:
-    def __init__(self, trainer, predictor):
+    def __init__(
+        self, 
+        trainer: RealTimeTrainer, 
+        predictor: RealTimePredictor,
+        communicator: Optional[SerialCommunicator] = None,
+        starting_mode: MenuState = MenuState.MAIN
+    ):
         self.trainer = trainer
         self.predictor = predictor
-        self.current_mode = MenuState.MAIN
+        self.communicator = communicator
+        
+        self.current_mode = starting_mode
         self.current_label = None
         
         self.command_handler = CommandHandler(self)
@@ -76,11 +87,15 @@ class InterfaceHandler:
 
                     if pred is not None:
                         print(f'\r[Prediction Mode] Prediction: {pred}', end='', flush=True)
+
+                        if self.communicator and self.communicator.is_active:
+                            mapped_pred = self.trainer.label_mapping[pred]
+                            self.communicator.send(mapped_pred)
     
     def start(self):
         self.listener.start()
-        logger.info('Controller started - listening for keyboard input')
+        logger.info('Interface started - listening for keyboard input')
 
     def stop(self):
         self.listener.stop()
-        logger.info('Controller stopped')
+        logger.info('Interface stopped')

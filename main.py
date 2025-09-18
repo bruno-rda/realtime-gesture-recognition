@@ -4,7 +4,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectPercentile, f_classif
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-from realtime import RealTimeTrainer, RealTimePredictor, InterfaceHandler
+from realtime import RealTimeTrainer, RealTimePredictor, SerialCommunicator, InterfaceHandler
+from realtime.interface import MenuState
 from emg_processing import ManualProcessor
 from feature_extraction import ManualFeatureExtractor
 from config import get_settings
@@ -47,7 +48,18 @@ predictor = RealTimePredictor(
     sampling_rate=settings.sampling_rate,
 )
 
-interface = InterfaceHandler(trainer, predictor)
+communicator = SerialCommunicator(
+    port=settings.serial_port,
+    baudrate=settings.serial_baudrate,
+    timeout=settings.serial_timeout,
+)
+
+interface = InterfaceHandler(
+    trainer=trainer, 
+    predictor=predictor,
+    communicator=communicator,
+    # starting_mode=MenuState.PREDICTION
+)
 
 def receive_packets(sock, queue, stop_event):
     logger.info('Starting receiver thread')

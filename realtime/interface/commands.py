@@ -51,7 +51,13 @@ class CommandHandler:
     def temporary_disable_listener(self):
         input('Press enter to enable listener: ')
         self.print_menu()
-
+    
+    def toggle_serial_connection(self):
+        if self.controller.communicator is not None:
+            if self.controller.communicator.is_active:
+                self.controller.communicator.close()
+            else:
+                self.controller.communicator.open()
 
 def get_command_mapping(
     handler: CommandHandler
@@ -127,6 +133,11 @@ def get_command_mapping(
                 action=handler.reset_model,
                 next_state=MenuState.MAIN
             ),
+            'x': Command(
+                key='x',
+                description='Toggle serial connection',
+                action=handler.toggle_serial_connection
+            )
         }
     }
 

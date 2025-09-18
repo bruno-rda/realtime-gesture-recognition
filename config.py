@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     step_size: float = 0.05
     sampling_rate: int = 1200
 
+    # Serial
+    serial_port: str = 'COM3'
+    serial_baudrate: int = 9600
+    serial_timeout: float = 1
+
     # Model training
     cross_validate: bool = True
     should_save: bool = True
