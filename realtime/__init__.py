@@ -1,9 +1,9 @@
 from .trainer import RealTimeTrainer
 from .predictor import RealTimePredictor
-from .controller import Controller
+from .interface import InterfaceHandler
 
 __all__ = [
     'RealTimeTrainer', 
     'RealTimePredictor',
-    'Controller'
+    'InterfaceHandler'
 ]
