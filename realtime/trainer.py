@@ -91,8 +91,6 @@ class RealTimeTrainer:
 
         if self.df.empty:
             raise ValueError('Cannot train if no data has been collected')
-        
-        self.training = False
 
         X, y, groups, _ = self.processor.get_X_y_groups(
             df=self.df, 
@@ -117,6 +115,7 @@ class RealTimeTrainer:
             logger.debug(f'All CV scores: {np.array2string(scores, precision=5)}')
         
         self.pipeline.fit(X, y)
+        self.training = False
         logger.info('Training completed.')
         
         if self.should_save:
