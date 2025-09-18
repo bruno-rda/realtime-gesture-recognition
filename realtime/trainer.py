@@ -88,6 +88,10 @@ class RealTimeTrainer:
 
     def train(self) -> None:
         assert self.training, 'Cannot train if not in training mode'
+
+        if self.df.empty:
+            raise ValueError('Cannot train if no data has been collected')
+        
         self.training = False
 
         X, y, groups, _ = self.processor.get_X_y_groups(
