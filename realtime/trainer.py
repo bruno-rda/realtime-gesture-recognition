@@ -39,6 +39,8 @@ class RealTimeTrainer:
         self.cross_validate = cross_validate
         self.should_save = should_save
         self.base_dir = base_dir
+
+        self.label_mapping: Optional[dict[int, Any]] = None
     
     @property
     def metadata(self) -> dict[str, Any]:
@@ -61,13 +63,11 @@ class RealTimeTrainer:
 
             # Model information
             'pipeline_params': self.pipeline.get_params(deep=True),
+            'label_mapping': self.label_mapping,
         }
     
     def update(self, rows: np.ndarray, label: Any) -> None:
-        # If not training, do nothing
-        if not self.training:
-            return
-        
+        assert self.training, 'Cannot update if not in training mode'
         assert label is not None, 'Label cannot be None'
 
         if rows.ndim == 1:
@@ -92,12 +92,14 @@ class RealTimeTrainer:
         if self.df.empty:
             raise ValueError('Cannot train if no data has been collected')
 
-        X, y, groups, _ = self.processor.get_X_y_groups(
+        X, y, groups, label_mapping = self.processor.get_X_y_groups(
             df=self.df, 
             sampling_rate=self.sampling_rate,
             window_size=self.window_size, 
             step_size=self.step_size, 
         )
+
+        self.label_mapping = label_mapping
 
         if self.cross_validate:
             logger.info('Performing cross-validation...')
@@ -166,6 +168,7 @@ class RealTimeTrainer:
         This allows starting a new training session from scratch.
         """
         self.df = pd.DataFrame()
+        self.label_mapping = None
         self.curr_group = 0
         self.curr_steps = 0
         self.training = True
