@@ -4,8 +4,8 @@ from .tsfel_extractor import TsfelFeatureExtractor
 from .tsfresh_extractor import TsfreshFeatureExtractor
 
 __all__ = [
-    "FeatureExtractor",
-    "ManualFeatureExtractor",
-    "TsfelFeatureExtractor",
-    "TsfreshFeatureExtractor"
+    'FeatureExtractor',
+    'ManualFeatureExtractor',
+    'TsfelFeatureExtractor',
+    'TsfreshFeatureExtractor'
 ]

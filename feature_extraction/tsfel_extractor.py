@@ -18,7 +18,7 @@ class TsfelFeatureExtractor(FeatureExtractor):
         sampling_rate: int
     ) -> np.ndarray:
         features = []
-        pbar = tqdm(total=len(signal), desc="Extracting features", disable=not self.verbose)
+        pbar = tqdm(total=len(signal), desc='Extracting features', disable=not self.verbose)
         step = int(window_size * sampling_rate)
 
         for window in sliding_windows(signal, window_size, step_size, sampling_rate):
