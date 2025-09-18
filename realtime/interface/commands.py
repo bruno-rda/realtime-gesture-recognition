@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from typing import Callable, Optional
 from realtime.interface.menus import MenuState
@@ -43,12 +44,39 @@ class CommandHandler:
     
     def print_menu(self):
         self.controller.print_menu()
+    
+    def clear_screen(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+    
+    def temporary_disable_listener(self):
+        input('Press enter to enable listener: ')
+        self.print_menu()
+
 
 def get_command_mapping(
     handler: CommandHandler
 ) -> dict[MenuState, dict[str, Command]]:
     
-    return {
+    # Commands that are shared between all modes
+    shared_commands = {
+        '&': Command(
+            key='&',
+            description='Disable listener until you press enter',
+            action=handler.temporary_disable_listener
+        ),
+        'd': Command(
+            key='d',
+            description='Clear screen',
+            action=handler.clear_screen
+        ),
+        'h': Command(
+            key='h',
+            description='Show this menu help',
+            action=handler.print_menu
+        )
+    }
+
+    commands = {
         MenuState.MAIN: {
             'a': Command(
                 key='a',
@@ -68,11 +96,6 @@ def get_command_mapping(
                 key='s',
                 description='Save trainer information',
                 action=handler.save_trainer
-            ),
-            'h': Command(
-                key='h',
-                description='Show this menu help',
-                action=handler.print_menu
             )
         },
         MenuState.DATA_COLLECTION: {
@@ -82,11 +105,6 @@ def get_command_mapping(
                 short_description='Quit sample collection',
                 action=handler.quit_data_collection,
                 next_state=MenuState.MAIN
-            ),
-            'h': Command(
-                key='h',
-                description='Show this menu help',
-                action=handler.print_menu
             )
         },
         MenuState.PREDICTION: {
@@ -109,10 +127,10 @@ def get_command_mapping(
                 action=handler.reset_model,
                 next_state=MenuState.MAIN
             ),
-            'h': Command(
-                key='h',
-                description='Show this menu help',
-                action=handler.print_menu
-            )
         }
+    }
+
+    return {
+        menu_name: {**menu_commands, **shared_commands}
+        for menu_name, menu_commands in commands.items()
     }
