@@ -1,4 +1,5 @@
 import serial
+from typing import Optional, Any
 import logging
 
 logger = logging.getLogger(__name__)
@@ -9,11 +10,13 @@ class SerialCommunicator:
         self, 
         port: str, 
         baudrate: int = 9600, 
-        timeout: float = 1
+        timeout: float = 1,
+        message_mapping: Optional[dict[Any, Any]] = None
     ):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
+        self.message_mapping = message_mapping or dict()
         self.serial_connection = None
         self._connection_warned = False
 
@@ -45,7 +48,8 @@ class SerialCommunicator:
                 logger.info('Serial connection restored.')
                 self._connection_warned = False
 
-            self.serial_connection.write(message.encode('utf-8'))
+            mapped_message = self.message_mapping.get(message, message)
+            self.serial_connection.write(mapped_message.encode('utf-8'))
         else:
             if not self._connection_warned:
                 logger.warning('Serial connection not open.')
