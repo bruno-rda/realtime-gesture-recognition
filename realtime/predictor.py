@@ -40,16 +40,17 @@ class RealTimePredictor:
         Update the predictor with a new reading.
 
         Args:
-            row: The new reading.
+            row: The new reading including the timestamp.
 
         Returns:
             The predicted label if the window is full, 
             and enough steps have passed, otherwise None.
         """
         if row.ndim != 1:
-            raise ValueError("Row must be a 1D array")
+            raise ValueError('Row must be a 1D array')
 
-        self.readings.append(row)
+        # Remove the timestamp from the row
+        self.readings.append(row[:-1])
 
         if len(self.readings) < self.window_samples:
             return None
