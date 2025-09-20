@@ -53,11 +53,12 @@ class RealTimeTrainer:
         def get_class_name(obj: Any) -> str:
             return obj.__class__.__name__
         
-        return {
+        metadata = {
             # Data information
             'shape': self.df.shape,
             'labels': self.df['label'].unique().tolist(),
             'n_groups': len(self.df['group'].unique()),
+            'n_groups_by_label': dict(self.df.groupby('label').nunique()['group'].astype(str)),
 
             # Processing information
             'sampling_rate': self.sampling_rate,
@@ -68,9 +69,13 @@ class RealTimeTrainer:
             'feature_extractor_params': self.processor.feature_extractor.__dict__,
 
             # Model information
-            'pipeline_params': self.pipeline.get_params(deep=True),
             'label_mapping': self.label_mapping,
         }
+
+        if not self.training:
+            metadata['pipeline_params'] = self.pipeline.get_params(deep=True)
+
+        return metadata
     
     def update(self, rows: np.ndarray, label: Any) -> None:
         assert self.training, 'Cannot update if not in training mode'

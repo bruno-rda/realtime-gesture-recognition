@@ -1,4 +1,5 @@
 import os
+import json
 from dataclasses import dataclass
 from typing import Callable, Optional
 from realtime.interface.menus import MenuState
@@ -65,6 +66,14 @@ class CommandHandler:
         else:
             self.controller.communicator.open()
         
+    def show_trainer_metadata(self):
+        print(
+            json.dumps(
+                self.controller.trainer.metadata, 
+                indent=4,
+                default=str
+            )
+        )
 
 def get_command_mapping(
     handler: CommandHandler
@@ -104,6 +113,11 @@ def get_command_mapping(
                 short_description='Train the model',
                 action=handler.train_model,
                 next_state=MenuState.PREDICTION
+            ),
+            'm': Command(
+                key='m',
+                description='Show trainer metadata',
+                action=handler.show_trainer_metadata
             ),
             's': Command(
                 key='s',
