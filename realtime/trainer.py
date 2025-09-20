@@ -74,7 +74,7 @@ class RealTimeTrainer:
     
     def update(self, rows: np.ndarray, label: Any) -> None:
         assert self.training, 'Cannot update if not in training mode'
-        assert label is not None, 'Label cannot be None'
+        assert label, 'Label cannot be empty'
 
         if rows.ndim == 1:
             rows = np.expand_dims(rows, axis=0)
@@ -109,7 +109,7 @@ class RealTimeTrainer:
 
         if self.cross_validate:
             logger.info('Performing cross-validation...')
-            cv = StratifiedGroupKFold(n_splits=5, shuffle=True)
+            cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1)
 
             scores = cross_val_score(
                 self.pipeline, X, y, 
@@ -120,7 +120,7 @@ class RealTimeTrainer:
             )
 
             logger.info(f'Cross-validation completed - Mean: {scores.mean():.5f} (±{scores.std():.5f})')
-            logger.debug(f'All CV scores: {np.array2string(scores, precision=5)}')
+            logger.info(f'All CV scores: {np.array2string(scores, precision=5)}')
         
         self.pipeline.fit(X, y)
         self.training = False

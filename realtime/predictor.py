@@ -24,7 +24,7 @@ class RealTimePredictor:
         self.readings = deque(maxlen=self.window_samples)
         self.remaining_steps = self.step_samples
 
-    def predict(self) -> int:
+    def predict(self) -> tuple[int, np.ndarray]:
         # Clean the signals and extract features
         X = self.processor.process(
             signals=np.array(self.readings),
@@ -33,7 +33,8 @@ class RealTimePredictor:
             sampling_rate=self.sampling_rate
         )
 
-        return self.pipeline.predict(X)[0]
+        probs = self.pipeline.predict_proba(X)[0]
+        return np.argmax(probs), probs
 
     def update(self, row: np.ndarray) -> Optional[int]:
         """

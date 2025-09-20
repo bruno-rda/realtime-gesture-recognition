@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     model_max_depth: int = 40
     model_n_estimators: int = 300
 
+    # Interface
+    show_probs: bool = True
+    
     # Logging
     log_level: str = 'INFO'
 

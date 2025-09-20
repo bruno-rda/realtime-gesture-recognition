@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 from pynput import keyboard
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from realtime.interface.menus import MenuState, MENU_INFO
 from realtime.interface.commands import CommandHandler, Command, get_command_mapping
 from realtime.trainer import RealTimeTrainer
@@ -16,12 +16,14 @@ class InterfaceHandler:
         self, 
         trainer: RealTimeTrainer, 
         predictor: RealTimePredictor,
-        communicator: Optional[SerialCommunicator] = None
+        communicator: Optional[SerialCommunicator] = None,
+        show_probs: bool = True
     ):
         self.trainer = trainer
         self.predictor = predictor
         self.communicator = communicator
-        
+        self.show_probs = show_probs
+
         self.current_label = None
         self.current_mode = (
             MenuState.MAIN if trainer.training else MenuState.PREDICTION
@@ -72,7 +74,7 @@ class InterfaceHandler:
             except Exception as e:
                 logger.warning(f'Command execution failed: {e}')
     
-    def update(self, data: np.ndarray) -> None:
+    def update(self, data: np.ndarray) -> Optional[Any]:
         match self.current_mode:
             case MenuState.DATA_COLLECTION:
                 self.trainer.update(data, self.current_label)
@@ -83,15 +85,37 @@ class InterfaceHandler:
                 )
         
             case MenuState.PREDICTION:
+                result = None
+
                 for row in data:
-                    pred = self.predictor.update(row)
+                    result = self.predictor.update(row)
 
-                    if pred is not None:
-                        mapped_pred = self.trainer.label_mapping.get(pred, pred)
-                        print(f'\r[Prediction Mode] Prediction: {mapped_pred}', end='', flush=True)
+                    if result is None:
+                        continue
+                    
+                    pred, probs = result
+                    
+                    # Map prediction to label
+                    mapped_pred = self.trainer.label_mapping.get(pred, pred)
 
-                        if self.communicator and self.communicator.is_active:
-                            self.communicator.send(mapped_pred)
+                    # Format probabilities if needed
+                    if self.show_probs:
+                        f_pred = {
+                            label: f'{probs[i]:.5f}'
+                            for i, label in self.trainer.label_mapping.items()
+                        }
+                    else:
+                        f_pred = mapped_pred
+
+                    print(
+                        f'\r[Prediction Mode] Prediction: {f_pred} {" " * 50}', 
+                        end='', flush=True
+                    )
+
+                    if self.communicator and self.communicator.is_active:
+                        self.communicator.send(mapped_pred)
+
+                return result
     
     def start(self):
         self.listener.start()
