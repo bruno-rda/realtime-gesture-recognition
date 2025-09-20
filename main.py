@@ -73,9 +73,9 @@ def create_app(settings: Settings):
     predictor = RealTimePredictor(
         pipeline=trainer.pipeline,
         processor=trainer.processor,
-        window_size=settings.window_size,
-        step_size=settings.step_size,
-        sampling_rate=settings.sampling_rate,
+        window_size=trainer.window_size,
+        step_size=trainer.step_size,
+        sampling_rate=trainer.sampling_rate,
     )
 
     communicator = SerialCommunicator(
@@ -88,7 +88,8 @@ def create_app(settings: Settings):
     interface = InterfaceHandler(
         trainer=trainer, 
         predictor=predictor,
-        communicator=communicator
+        communicator=communicator,
+        show_probs=settings.show_probs,
     )
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
