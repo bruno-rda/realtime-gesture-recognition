@@ -7,10 +7,16 @@ from xgboost import XGBClassifier
 from realtime import RealTimeTrainer, RealTimePredictor, SerialCommunicator, InterfaceHandler
 from emg_processing import ManualProcessor
 from feature_extraction import ManualFeatureExtractor
-from config import get_settings, Settings
+from config import settings, Settings
 import threading
 import queue
 import logging
+
+logging.basicConfig(
+    level=settings.log_level,
+    format='[%(asctime)s] %(levelname)s - %(message)s',
+    datefmt='%H:%M:%S'
+)
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +115,6 @@ def create_app(settings: Settings):
 
 
 if __name__ == '__main__':
-    settings = get_settings()
     interface, data_queue, stop_event, sock, receiver_thread = create_app(settings)
     
     interface.start()

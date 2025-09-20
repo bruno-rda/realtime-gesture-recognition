@@ -39,12 +39,3 @@ class Settings(BaseSettings):
     log_level: str = 'INFO'
 
 settings = Settings()
-
-logging.basicConfig(
-    level=settings.log_level,
-    format='[%(asctime)s] %(levelname)s - %(message)s',
-    datefmt='%H:%M:%S'
-)
-
-def get_settings() -> Settings:
-    return settings
