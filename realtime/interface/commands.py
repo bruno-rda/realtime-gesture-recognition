@@ -21,6 +21,9 @@ class CommandHandler:
     
     def prompt_for_label(self):
         self.controller.current_label = input('Enter label: ')
+        
+        if not self.controller.current_label:
+            raise ValueError('Label cannot be empty')
     
     def train_model(self):
         self.controller.trainer.train()
@@ -32,15 +35,16 @@ class CommandHandler:
         self.controller.trainer.switch_group()
     
     def _confirm(self, message: str):
-        return input(f'{message} (y/n): ').lower() == 'y'
+        if input(f'{message} (y/n): ').lower() != 'y':
+            raise RuntimeError('Action cancelled')
     
     def reset_all(self):
-        if self._confirm('Are you sure you want to reset all data and the model?'):
-            self.controller.trainer.reset()
+        self._confirm('Are you sure you want to reset all data and the model?')
+        self.controller.trainer.reset()
     
     def reset_model(self):
-        if self._confirm('Are you sure you want to reset the model?'):
-            self.controller.trainer.reset_model()
+        self._confirm('Are you sure you want to reset the model?')
+        self.controller.trainer.reset_model()
     
     def print_menu(self):
         self.controller.print_menu()
@@ -53,11 +57,14 @@ class CommandHandler:
         self.print_menu()
     
     def toggle_serial_connection(self):
-        if self.controller.communicator is not None:
-            if self.controller.communicator.is_active:
-                self.controller.communicator.close()
-            else:
-                self.controller.communicator.open()
+        if self.controller.communicator is None:
+            raise ValueError('Communicator was not provided')
+
+        if self.controller.communicator.is_active:
+            self.controller.communicator.close()
+        else:
+            self.controller.communicator.open()
+        
 
 def get_command_mapping(
     handler: CommandHandler
