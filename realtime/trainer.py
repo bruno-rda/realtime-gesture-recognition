@@ -108,6 +108,12 @@ class RealTimeTrainer:
         self.label_mapping = label_mapping
 
         if self.cross_validate:
+            if groups.groupby(y).nunique().min() == 1:
+                logger.warning(
+                    'At least one label one unique group — this may cause uneven class'
+                    'distribution in cross-validation folds and reduce reliability of results.'
+                )
+            
             logger.info('Performing cross-validation...')
             cv = StratifiedGroupKFold(n_splits=5, shuffle=True, random_state=1)
 
