@@ -1,9 +1,13 @@
 import numpy as np
 import logging
 from pynput import keyboard
-from typing import Dict, Optional, Any
+from typing import Optional, Any
 from realtime.interface.menus import MenuState, MENU_INFO
-from realtime.interface.commands import CommandHandler, Command, get_command_mapping
+from realtime.interface.commands import (
+    CommandHandler, 
+    Command, 
+    get_command_mapping
+)
 from realtime.trainer import RealTimeTrainer
 from realtime.predictor import RealTimePredictor
 from realtime.communicator import SerialCommunicator
@@ -30,7 +34,9 @@ class InterfaceHandler:
         )
 
         self.command_handler = CommandHandler(self)
-        self.commands: Dict[MenuState, Dict[str, Command]] = get_command_mapping(self.command_handler)
+        self.commands: dict[MenuState, dict[str, Command]] = (
+            get_command_mapping(self.command_handler)
+        )
         
         self.listener = keyboard.Listener(on_press=self.on_press)
         self.print_menu()
@@ -52,6 +58,9 @@ class InterfaceHandler:
         logger.info(f'Switched to {mode.value!r} mode')
         self.current_mode = mode
         self.print_menu()
+    
+    def refresh_line(self, text: str = ''):
+        print(f'\r\033[K{text}', end='', flush=True)
 
     def on_press(self, key):
         if not hasattr(key, 'char'):
@@ -62,6 +71,7 @@ class InterfaceHandler:
         command = current_commands.get(key_char)
 
         if command:
+            self.refresh_line()
             logger.info(f'Pressed {key_char!r}: {command.short_description}')
             
             try:
@@ -77,46 +87,47 @@ class InterfaceHandler:
     def update(self, data: np.ndarray) -> Optional[Any]:
         match self.current_mode:
             case MenuState.DATA_COLLECTION:
-                self.trainer.update(data, self.current_label)
-                
-                print(
-                    f'\r[Collecting: {self.current_label!r}] Steps: {self.trainer.curr_steps}',
-                    end='', flush=True
-                )
+                return self._update_data_collection(data)
         
             case MenuState.PREDICTION:
-                result = None
+                return self._update_prediction(data)
 
-                for row in data:
-                    result = self.predictor.update(row)
+    def _update_data_collection(self, data: np.ndarray):
+        self.trainer.update(data, self.current_label)
+        self.refresh_line(
+            f'[Collecting: {self.current_label!r}] Steps: {self.trainer.curr_steps}'
+        )
 
-                    if result is None:
-                        continue
-                    
-                    pred, probs = result
-                    
-                    # Map prediction to label
-                    mapped_pred = self.trainer.label_mapping.get(pred, pred)
+    def _update_prediction(self, data: np.ndarray):
+        result = None
 
-                    # Format probabilities if needed
-                    if self.show_probs:
-                        f_pred = {
-                            label: f'{probs[i]:.5f}'
-                            for i, label in self.trainer.label_mapping.items()
-                        }
-                    else:
-                        f_pred = mapped_pred
+        for row in data:
+            result = self.predictor.update(row)
 
-                    print(
-                        f'\r[Prediction Mode] Prediction: {f_pred} {" " * 50}', 
-                        end='', flush=True
-                    )
+            if result is None:
+                continue
+            
+            pred, probs = result
+            
+            # Map prediction to label
+            mapped_pred = self.trainer.label_mapping.get(pred, pred)
 
-                    if self.communicator and self.communicator.is_active:
-                        self.communicator.send(mapped_pred)
+            # Format probabilities if needed
+            if self.show_probs:
+                f_pred = {
+                    label: f'{probs[i]:.5f}'
+                    for i, label in self.trainer.label_mapping.items()
+                }
+            else:
+                f_pred = mapped_pred
 
-                return result
-    
+            self.refresh_line(f'[Prediction Mode] Prediction {self.predictor.n_predictions}: {f_pred}')
+
+            if self.communicator and self.communicator.is_active:
+                self.communicator.send(mapped_pred)
+
+        return result
+
     def start(self):
         self.listener.start()
         logger.info('Interface started - listening for keyboard input')

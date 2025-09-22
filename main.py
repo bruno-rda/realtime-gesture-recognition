@@ -126,9 +126,11 @@ if __name__ == '__main__':
             interface.update(data)
 
     except KeyboardInterrupt:
+        interface.refresh_line()
         logger.info('Keyboard interrupt detected. Exiting...')
         
     except Exception as e:
+        interface.refresh_line()
         logger.error(f'Error: {e}')
     
     logger.info('Shutting down...')
