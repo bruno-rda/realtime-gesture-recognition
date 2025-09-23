@@ -23,6 +23,7 @@ class RealTimePredictor:
 
         self.readings = deque(maxlen=self.window_samples)
         self.remaining_steps = self.step_samples
+        self.n_preds = 0
 
     def predict(self) -> tuple[int, np.ndarray]:
         # Clean the signals and extract features
@@ -61,5 +62,6 @@ class RealTimePredictor:
             return None
 
         self.remaining_steps = self.step_samples
+        self.n_preds += 1
         
         return self.predict()

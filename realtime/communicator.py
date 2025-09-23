@@ -11,13 +11,17 @@ class SerialCommunicator:
         port: str, 
         baudrate: int = 9600, 
         timeout: float = 1,
+        chunk_size: int = 1,
         message_mapping: Optional[dict[Any, Any]] = None
     ):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout
+        self.chunk_size = chunk_size
         self.message_mapping = message_mapping or dict()
-        self.serial_connection = None
+
+        self.serial_connection: Optional[serial.Serial] = None
+        self.chunk_buffer: list[bytes] = []
         self._connection_warned = False
 
     @property
@@ -42,15 +46,33 @@ class SerialCommunicator:
             self.serial_connection = None
             logger.info('Serial connection closed.')
 
-    def send(self, message: str):
-        if self.is_active:
-            if self._connection_warned:
-                logger.info('Serial connection restored.')
-                self._connection_warned = False
+    def send(self, message: str) -> None:
+        if not self.is_active:
+            self._warn_once()
+            return
 
-            mapped_message = self.message_mapping.get(message, message)
-            self.serial_connection.write(mapped_message.encode('utf-8'))
-        else:
-            if not self._connection_warned:
-                logger.warning('Serial connection not open.')
-                self._connection_warned = True
+        self._restore_warning()
+
+        # Apply message mapping
+        mapped = self.message_mapping.get(message, message)
+        self.chunk_buffer.append(mapped.encode('utf-8'))
+
+        if len(self.chunk_buffer) >= self.chunk_size:
+            self._flush_buffer()
+
+    def _flush_buffer(self) -> None:
+        if not self.is_active or not self.chunk_buffer:
+            return
+
+        self.serial_connection.write(b'\n'.join(self.chunk_buffer) + b'\n')
+        self.chunk_buffer.clear()
+
+    def _warn_once(self) -> None:
+        if not self._connection_warned:
+            logger.warning('Serial connection not open.')
+            self._connection_warned = True
+
+    def _restore_warning(self) -> None:
+        if self._connection_warned:
+            logger.info('Serial connection restored.')
+            self._connection_warned = False

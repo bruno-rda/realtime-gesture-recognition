@@ -121,7 +121,9 @@ class InterfaceHandler:
             else:
                 f_pred = mapped_pred
 
-            self.refresh_line(f'[Prediction Mode] Prediction {self.predictor.n_predictions}: {f_pred}')
+            self.refresh_line(
+                f'[Prediction Mode] Prediction {self.predictor.n_preds}: {f_pred}'
+            )
 
             if self.communicator and self.communicator.is_active:
                 self.communicator.send(mapped_pred)
