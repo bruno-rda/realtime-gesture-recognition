@@ -1,6 +1,6 @@
-# EMG Gesture Recognition
+# Realtime Gesture Recognition
 
-A real-time electromyography (EMG) gesture recognition system that processes multi-channel EMG signals and performs machine learning-based classification.
+A real-time gesture recognition system that processes multi-channel EMG signals and performs machine learning-based classification.
 
 ## Features
 
@@ -16,8 +16,8 @@ A real-time electromyography (EMG) gesture recognition system that processes mul
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/bruno-rda/emg-gesture-recognition.git
-cd emg-gesture-recognition
+git clone https://github.com/bruno-rda/realtime-gesture-recognition.git
+cd realtime-gesture-recognition
 ```
 
 2. Install dependencies:
