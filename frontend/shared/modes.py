@@ -1,13 +1,13 @@
 from enum import Enum
 
-class MenuState(Enum):
+class Modes(Enum):
     MAIN = 'main'
     DATA_COLLECTION = 'data_collection'
     PREDICTION = 'prediction'
 
 
-MENU_INFO = {
-    MenuState.MAIN: {
+MODES_INFO = {
+    Modes.MAIN: {
         'name': 'Main Mode',
         'description': '''
 - This is the default starting mode.
@@ -17,14 +17,14 @@ MENU_INFO = {
     - Prediction Mode (after resetting the model or data)
         '''
     },
-    MenuState.DATA_COLLECTION: {
+    Modes.DATA_COLLECTION: {
         'name': 'Data Collection Mode',
         'description': '''
 - Collects training samples with the current label.
 - Entered by pressing 'a' in Main Mode.
         '''
     },
-    MenuState.PREDICTION: {
+    Modes.PREDICTION: {
         'name': 'Prediction Mode',
         'description': '''
 - Predicts the label of the current sample by default.

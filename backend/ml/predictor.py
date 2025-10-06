@@ -2,13 +2,13 @@ from typing import Optional
 import numpy as np
 from collections import deque
 from sklearn.pipeline import Pipeline
-from emg_processing import EMGProcessor
+from backend.signal_processing import SignalProcessor
 
-class RealTimePredictor:
+class Predictor:
     def __init__(
         self, 
         pipeline: Pipeline,
-        processor: EMGProcessor,
+        processor: SignalProcessor,
         window_size: float,
         step_size: float,
         sampling_rate: int,
@@ -25,9 +25,14 @@ class RealTimePredictor:
         self.remaining_steps = self.step_samples
         self.n_preds = 0
 
+    def reset(self):
+        self.readings = deque(maxlen=self.window_samples)
+        self.remaining_steps = self.step_samples
+        self.n_preds = 0
+
     def predict(self) -> tuple[int, np.ndarray]:
         # Clean the signals and extract features
-        X = self.processor.process(
+        X = self.processor.process_signals(
             signals=np.array(self.readings),
             window_size=self.window_size,
             step_size=self.step_size,

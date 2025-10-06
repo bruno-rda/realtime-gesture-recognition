@@ -8,22 +8,22 @@ from typing import Optional, Any
 from sklearn.base import clone
 from sklearn.pipeline import Pipeline
 from sklearn.model_selection import cross_val_score, StratifiedGroupKFold
-from emg_processing import EMGProcessor
+from backend.signal_processing import SignalProcessor
 import logging
 
 logger = logging.getLogger(__name__)
 
-class RealTimeTrainer:
+class Trainer:
     def __init__(
         self, 
         pipeline: Pipeline, 
-        processor: EMGProcessor,
+        processor: SignalProcessor,
         window_size: float,
         step_size: float,
         sampling_rate: int,
         cross_validate: bool = False,
         should_save: bool = True,
-        base_dir: str = './realtime/experiments'
+        base_dir: str = './backend/ml/experiments'
     ):
         self.df = pd.DataFrame()
         self.processor = processor
@@ -44,33 +44,35 @@ class RealTimeTrainer:
         self.label_mapping: Optional[dict[int, Any]] = None
     
     @classmethod
-    def from_path(cls, path: str) -> 'RealTimeTrainer':
+    def from_path(cls, path: str) -> 'Trainer':
         with open(path, 'rb') as f:
             return pickle.load(f)
     
     @property
     def metadata(self) -> dict[str, Any]:
-        def get_class_name(obj: Any) -> str:
-            return obj.__class__.__name__
-        
         metadata = {
-            # Data information
-            'shape': self.df.shape,
-            'labels': self.df['label'].unique().tolist(),
-            'n_groups': len(self.df['group'].unique()),
-            'n_groups_by_label': dict(self.df.groupby('label').nunique()['group'].astype(str)),
-
             # Processing information
             'sampling_rate': self.sampling_rate,
             'window_size': self.window_size,
             'step_size': self.step_size,
-            'processor_class': get_class_name(self.processor),
-            'feature_extractor_class': get_class_name(self.processor.feature_extractor),
-            'feature_extractor_params': self.processor.feature_extractor.__dict__,
+            'processor': self.processor,
 
             # Model information
             'label_mapping': self.label_mapping,
         }
+
+        if not self.df.empty:
+            labels = self.df['label'].unique().tolist()
+            groups_by_label = (
+                self.df.groupby('label')['group'].nunique().astype(str).to_dict()
+            )
+            
+            metadata.update({
+                'shape': self.df.shape,
+                'labels': labels,
+                'n_groups': len(self.df['group'].unique()),
+                'n_groups_by_label': groups_by_label,
+            })
 
         if not self.training:
             metadata['pipeline_params'] = self.pipeline.get_params(deep=True)
@@ -79,7 +81,7 @@ class RealTimeTrainer:
     
     def update(self, rows: np.ndarray, label: Any) -> None:
         assert self.training, 'Cannot update if not in training mode'
-        assert label, 'Label cannot be empty'
+        assert label, 'Label cannot be empty at update'
 
         if rows.ndim == 1:
             rows = np.expand_dims(rows, axis=0)
@@ -103,7 +105,7 @@ class RealTimeTrainer:
         if self.df.empty:
             raise ValueError('Cannot train if no data has been collected')
 
-        X, y, groups, label_mapping = self.processor.get_X_y_groups(
+        X, y, groups, label_mapping = self.processor.build_dataset(
             df=self.df, 
             sampling_rate=self.sampling_rate,
             window_size=self.window_size, 
@@ -115,7 +117,7 @@ class RealTimeTrainer:
         if self.cross_validate:
             if groups.groupby(y).nunique().min() == 1:
                 logger.warning(
-                    'At least one label one unique group — this may cause uneven class'
+                    'At least one label one unique group — this may cause uneven class '
                     'distribution in cross-validation folds and reduce reliability of results.'
                 )
             
@@ -154,7 +156,7 @@ class RealTimeTrainer:
             os.makedirs(new_exp_dir)
 
             # Save recovered data
-            self.df.to_csv(f'{new_exp_dir}/emg_data.csv')
+            self.df.to_csv(f'{new_exp_dir}/signal_data.csv')
 
             # Save the model if has been trained
             if not self.training:

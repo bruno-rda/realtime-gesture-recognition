@@ -1,6 +1,5 @@
 from typing import Optional, Any
 from pydantic_settings import BaseSettings
-import logging
 
 class Settings(BaseSettings):
     # Socket
@@ -14,16 +13,17 @@ class Settings(BaseSettings):
     sampling_rate: int = 1200
 
     # Serial
-    serial_port: str = 'COM3'
+    serial_port: str = '/dev/cu.usbserial-210'
     serial_baudrate: int = 9600
     serial_timeout: float = 1
+    serial_chunk_size: int = 1
     message_mapping: Optional[dict[Any, Any]] = None
 
     # Model training
     cross_validate: bool = True
     should_save: bool = True
-    experiments_base_dir: str = './realtime/experiments'
-    trainer_path: Optional[str] = None
+    experiments_base_dir: str = './backend/ml/experiments'
+    trainer_path: Optional[str] = './backend/ml/experiments/2/trainer.pkl'
 
     # Model hyperparameters
     feature_selector_percentile: int = 90

@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 import tsfresh
-from .base import FeatureExtractor
-from .utils import sliding_windows
+from ..base import FeatureExtractor
+from ..windowing import sliding_windows
 
-class TsfreshFeatureExtractor(FeatureExtractor):
+class TsfreshFeatures(FeatureExtractor):
     def __init__(self, verbose: bool = False):
         super().__init__()
         self.verbose = verbose
