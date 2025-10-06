@@ -38,5 +38,5 @@ var/
 # Application
 data/
 models/
-realtime/experiments/
+backend/ml/experiments/
 results/

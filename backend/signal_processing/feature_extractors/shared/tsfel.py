@@ -2,10 +2,10 @@ import numpy as np
 import tsfel
 import pandas as pd
 from tqdm import tqdm
-from .base import FeatureExtractor
-from .utils import sliding_windows
+from ..base import FeatureExtractor
+from ..windowing import sliding_windows
 
-class TsfelFeatureExtractor(FeatureExtractor):
+class TsfelFeatures(FeatureExtractor):
     def __init__(self, verbose: bool = False):
         super().__init__()
         self.verbose = verbose

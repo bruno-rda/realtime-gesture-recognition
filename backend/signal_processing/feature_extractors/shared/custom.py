@@ -1,6 +1,6 @@
 import numpy as np
-from .utils import sliding_windows
-from .base import FeatureExtractor
+from ..windowing import sliding_windows
+from ..base import FeatureExtractor
 import scipy
 
 def get_simple_features(window, sampling_rate):
@@ -46,7 +46,7 @@ def get_advanced_features(window, sampling_rate):
     ]
 
 
-class ManualFeatureExtractor(FeatureExtractor):
+class CustomFeatures(FeatureExtractor):
     def __init__(self, simple: bool = True):
         super().__init__()
         self.simple = simple

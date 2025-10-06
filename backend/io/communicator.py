@@ -4,7 +4,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 class SerialCommunicator:
     def __init__(
         self, 
@@ -32,6 +31,9 @@ class SerialCommunicator:
         )
 
     def open(self):
+        if self.is_active:
+            return
+        
         self.serial_connection = serial.Serial(
             port=self.port,
             baudrate=self.baudrate,
@@ -41,10 +43,12 @@ class SerialCommunicator:
         logger.info(f'Opened serial connection to {self.port} at {self.baudrate} baud.')
 
     def close(self):
-        if self.is_active:
-            self.serial_connection.close()
-            self.serial_connection = None
-            logger.info('Serial connection closed.')
+        if not self.is_active:
+            return
+        
+        self.serial_connection.close()
+        self.serial_connection = None
+        logger.info('Serial connection closed.')
 
     def send(self, message: str) -> None:
         if not self.is_active:

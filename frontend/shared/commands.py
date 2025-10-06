@@ -2,7 +2,7 @@ import os
 import json
 from dataclasses import dataclass
 from typing import Callable, Optional
-from realtime.interface.menus import MenuState
+from .modes import Modes
 
 @dataclass
 class Command:
@@ -10,21 +10,16 @@ class Command:
     description: str
     action: Callable[[], None]
     short_description: Optional[str] = None
-    next_state: Optional[MenuState] = None
+    next_state: Optional[Modes] = None
 
     def __post_init__(self):
         if self.short_description is None:
             self.short_description = self.description
 
+
 class CommandHandler:
     def __init__(self, controller):
         self.controller = controller
-    
-    def prompt_for_label(self):
-        self.controller.current_label = input('Enter label: ')
-        
-        if not self.controller.current_label:
-            raise ValueError('Label cannot be empty')
     
     def train_model(self):
         self.controller.trainer.train()
@@ -34,28 +29,17 @@ class CommandHandler:
     
     def quit_data_collection(self):
         self.controller.trainer.switch_group()
-    
-    def _confirm(self, message: str):
-        if input(f'{message} (y/n): ').lower() != 'y':
-            raise RuntimeError('Action cancelled')
+        self.controller.current_label = None
     
     def reset_all(self):
-        self._confirm('Are you sure you want to reset all data and the model?')
+        self.confirm('Are you sure you want to reset all data and the model?')
         self.controller.trainer.reset()
+        self.controller.predictor.reset()
     
     def reset_model(self):
-        self._confirm('Are you sure you want to reset the model?')
+        self.confirm('Are you sure you want to reset the model?')
         self.controller.trainer.reset_model()
-    
-    def print_menu(self):
-        self.controller.print_menu()
-    
-    def clear_screen(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-    
-    def temporary_disable_listener(self):
-        input('Press enter to enable listener: ')
-        self.print_menu()
+        self.controller.predictor.reset()
     
     def toggle_serial_connection(self):
         if self.controller.communicator is None:
@@ -65,54 +49,48 @@ class CommandHandler:
             self.controller.communicator.close()
         else:
             self.controller.communicator.open()
+    
+    def set_label(self):
+        label = self.request_label()
         
+        if not label:
+            raise ValueError('Label cannot be empty')
+
+        self.controller.current_label = label
+    
+    def confirm(self, message: str):
+        confirmation = self.request_confirmation(message)
+        
+        if not confirmation:
+            raise RuntimeError('Action cancelled')
+
+    def request_label(self) -> str:
+        raise NotImplementedError
+    
+    def request_confirmation(self, message: str) -> bool:
+        raise NotImplementedError
+
     def show_trainer_metadata(self):
-        print(
-            json.dumps(
-                self.controller.trainer.metadata, 
-                indent=4,
-                default=str
-            )
-        )
+        raise NotImplementedError
 
 def get_command_mapping(
     handler: CommandHandler
-) -> dict[MenuState, dict[str, Command]]:
-    
-    # Commands that are shared between all modes
-    shared_commands = {
-        '&': Command(
-            key='&',
-            description='Disable listener until you press enter',
-            action=handler.temporary_disable_listener
-        ),
-        'd': Command(
-            key='d',
-            description='Clear screen',
-            action=handler.clear_screen
-        ),
-        'h': Command(
-            key='h',
-            description='Show this menu help',
-            action=handler.print_menu
-        )
-    }
-
-    commands = {
-        MenuState.MAIN: {
+) -> dict[Modes, dict[str, Command]]:
+    return {
+        Modes.MAIN: {
             'a': Command(
                 key='a',
-                description='Prompt for label and start data collection  → switches to Data Collection Mode',
-                short_description='Prompt for label and start data collection',
-                action=handler.prompt_for_label,
-                next_state=MenuState.DATA_COLLECTION
+                description='Request label and start data collection     → switches to Data Collection Mode',
+                short_description='Request label and start data collection',
+                action=handler.set_label,
+                next_state=Modes.DATA_COLLECTION
             ),
             't': Command(
                 key='t',
                 description='Train the model                             → switches to Prediction Mode',
                 short_description='Train the model',
                 action=handler.train_model,
-                next_state=MenuState.PREDICTION
+                next_state=Modes.PREDICTION
             ),
             'm': Command(
                 key='m',
@@ -123,18 +101,23 @@ def get_command_mapping(
                 key='s',
                 description='Save trainer information',
                 action=handler.save_trainer
+            ),
+            'r': Command(
+                key='r',
+                description='Reset data and trainer to initial state',
+                action=handler.reset_all
             )
         },
-        MenuState.DATA_COLLECTION: {
+        Modes.DATA_COLLECTION: {
             'q': Command(
                 key='q',
                 description='Quit sample collection                     → returns to Main Mode',
                 short_description='Quit sample collection',
                 action=handler.quit_data_collection,
-                next_state=MenuState.MAIN
+                next_state=Modes.MAIN
             )
         },
-        MenuState.PREDICTION: {
+        Modes.PREDICTION: {
             's': Command(
                 key='s',
                 description='Save trainer information',
@@ -145,14 +128,14 @@ def get_command_mapping(
                 description='Reset all data and the model               → returns to Main Mode',
                 short_description='Reset all data and the model',
                 action=handler.reset_all,
-                next_state=MenuState.MAIN
+                next_state=Modes.MAIN
             ),
             'm': Command(
                 key='m',
                 description='Reset the model only                       → returns to Main Mode',
                 short_description='Reset the model only',
                 action=handler.reset_model,
-                next_state=MenuState.MAIN
+                next_state=Modes.MAIN
             ),
             'x': Command(
                 key='x',
@@ -160,9 +143,4 @@ def get_command_mapping(
                 action=handler.toggle_serial_connection
             )
         }
-    }
-
-    return {
-        menu_name: {**menu_commands, **shared_commands}
-        for menu_name, menu_commands in commands.items()
     }

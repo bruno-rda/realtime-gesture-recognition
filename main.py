@@ -1,16 +1,24 @@
 import socket
 import numpy as np
+import time
+import threading
+import queue
+import logging
+
 from sklearn.pipeline import Pipeline
 from sklearn.feature_selection import SelectPercentile, f_classif
 from sklearn.preprocessing import StandardScaler
 from xgboost import XGBClassifier
-from realtime import RealTimeTrainer, RealTimePredictor, SerialCommunicator, InterfaceHandler
-from emg_processing import ManualProcessor
-from feature_extraction import ManualFeatureExtractor
+
 from config import settings, Settings
-import threading
-import queue
-import logging
+from frontend.cli.controller import CLIController
+
+from backend.ml import Trainer, Predictor
+from backend.io import SerialCommunicator
+from backend.signal_processing import SignalProcessor, ChannelConfig
+from backend.signal_processing.cleaners import BandpassNotchFilter
+from backend.signal_processing.feature_extractors import CustomFeatures
+
 
 logging.basicConfig(
     level=settings.log_level,
@@ -22,9 +30,12 @@ logger = logging.getLogger(__name__)
 
 def receive_packets(sock, queue, stop_event):
     logger.info('Starting receiver thread')
+    rows = 8
     while not stop_event.is_set():
         try:
-            pkt, _ = sock.recvfrom(65535)
+            # pkt, _ = sock.recvfrom(65535)
+            time.sleep(rows / settings.sampling_rate)
+            pkt = np.random.randn(rows, settings.n_channels).tobytes()
             queue.put(pkt)
         except socket.timeout:
             continue
@@ -47,7 +58,7 @@ def create_app(settings: Settings):
     # If trainer_path is provided, the trainer will be loaded from the path.
     # Otherwise, a new trainer will be created.
     if settings.trainer_path is not None:
-        trainer = RealTimeTrainer.from_path(settings.trainer_path)
+        trainer = Trainer.from_path(settings.trainer_path)
     else:
         pipeline = Pipeline([
             ('feature_selector', SelectPercentile(
@@ -63,9 +74,17 @@ def create_app(settings: Settings):
                 n_estimators=settings.model_n_estimators,
             ))
         ])
+        
+        processor = SignalProcessor(
+            emg_config=(
+                ChannelConfig(
+                    signal_cleaner=BandpassNotchFilter(),
+                    feature_extractor=CustomFeatures()
+                )
+            )
+        )
 
-        processor = ManualProcessor(ManualFeatureExtractor(simple=True))
-        trainer = RealTimeTrainer(
+        trainer = Trainer(
             pipeline=pipeline,
             processor=processor,
             window_size=settings.window_size,
@@ -76,7 +95,7 @@ def create_app(settings: Settings):
             base_dir=settings.experiments_base_dir,
         )
 
-    predictor = RealTimePredictor(
+    predictor = Predictor(
         pipeline=trainer.pipeline,
         processor=trainer.processor,
         window_size=trainer.window_size,
@@ -88,10 +107,11 @@ def create_app(settings: Settings):
         port=settings.serial_port,
         baudrate=settings.serial_baudrate,
         timeout=settings.serial_timeout,
+        chunk_size=settings.serial_chunk_size,
         message_mapping=settings.message_mapping,
     )
 
-    interface = InterfaceHandler(
+    controller = CLIController(
         trainer=trainer, 
         predictor=predictor,
         communicator=communicator,
@@ -111,30 +131,29 @@ def create_app(settings: Settings):
     )
     receiver_thread.start()
     
-    return interface, data_queue, stop_event, sock, receiver_thread
+    return controller, data_queue, stop_event, sock, receiver_thread
 
 
 if __name__ == '__main__':
-    interface, data_queue, stop_event, sock, receiver_thread = create_app(settings)
-    
-    interface.start()
+    controller, data_queue, stop_event, sock, receiver_thread = create_app(settings)
+
+    controller.start()
 
     try:
-        while True:
+        while controller.running:
             pkt = data_queue.get()
             data = process_packet(pkt, settings.n_channels)
-            interface.update(data)
+            controller.update(data)
 
     except KeyboardInterrupt:
-        interface.refresh_line()
         logger.info('Keyboard interrupt detected. Exiting...')
         
     except Exception as e:
-        interface.refresh_line()
         logger.error(f'Error: {e}')
+        raise ValueError(e)
     
     logger.info('Shutting down...')
     stop_event.set()
     sock.close()
     receiver_thread.join()
-    interface.stop()
+    controller.stop()

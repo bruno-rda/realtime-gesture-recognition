@@ -1,66 +1,41 @@
-# Realtime Gesture Recognition
+# Real-time Gesture Recognition
 
-A real-time gesture recognition system that processes multi-channel EMG signals and performs machine learning-based classification.
+A machine learning system for real-time gesture recognition using multi-channel biosignals.
 
-## Features
+## Overview
 
-- Real-time EMG signal processing and feature extraction
-- Multi-channel signal support (configurable number of channels)
-- Machine learning pipeline with XGBoost classifier
-- Real-time training and prediction capabilities
-- UDP socket communication for data streaming
-- Modular architecture with pluggable processors and feature extractors
-- Configurable parameters for signal processing and model training
+This system processes EMG and EEG signals in real-time to classify gestures using machine learning. It supports both training and prediction modes with configurable signal processing pipelines.
 
-## Installation
+## Key Features
 
-1. Clone the repository:
-```bash
-git clone https://github.com/bruno-rda/realtime-gesture-recognition.git
-cd realtime-gesture-recognition
-```
+- **Real-time Processing**: Live EMG signal analysis and gesture classification
+- **Multi-channel Support**: Configurable number of input channels
+- **Machine Learning Pipeline**: Sklearn pipeline with feature selection and classification model
+- **Modular Architecture**: Pluggable signal processors and feature extractors
+- **Multiple Interfaces**: CLI and GUI frontends available
+- **Flexible Configuration**: Adjustable parameters for signal processing and model training
 
-2. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+## Quick Start
 
-## Usage
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Run the main application:
-```bash
-python main.py
-```
+2. **Run the application:**
+   ```bash
+   python main.py
+   ```
 
-The system will:
-- Bind to a UDP socket (default: 0.0.0.0:8000)
-- Process incoming EMG data packets
-- Perform real-time gesture recognition
-- Display predictions in the console
+3. **Configure settings in `config.py`** for your specific setup (channels, sampling rate, model parameters)
 
-## Configuration
+## System Components
 
-Modify `config.py` to adjust system parameters:
-
-- **Data Processing**: Number of channels, window size, step size, sampling rate
-- **Model Parameters**: Learning rate, max depth, number of estimators
-- **Network Settings**: UDP IP and port configuration
-- **Training Options**: Cross-validation, model saving, experiment directory
-
-## Architecture
-
-The project follows a modular design with the following components:
-
-- **EMG Processing**: Signal cleaning and preprocessing modules
-- **Feature Extraction**: Multiple feature extraction strategies (manual, TSFEL, TSFRESH)
-- **Real-time Components**: Training and prediction pipelines
-- **Configuration**: Centralized settings management
-- **Utilities**: Helper functions for data handling
+- **Signal Processing**: Multi-channel EMG/EEG signal cleaning and feature extraction
+- **Machine Learning**: Training pipeline with cross-validation and real-time prediction
+- **Communication**: UDP socket and serial communication interfaces
+- **Frontend**: CLI and GUI controllers for user interaction
 
 ## Data Format
 
-The system expects EMG data packets containing floating-point values representing multi-channel EMG signals. Each packet should contain data for all configured channels.
-
-## License
-
-This project is licensed under the terms specified in the LICENSE file.
+The system expects multi-channel signal data as floating-point arrays, with configurable channel count and sampling rates.

@@ -1,5 +1,4 @@
 import numpy as np
-from .utils import sliding_windows_indices
 
 class FeatureExtractor:
     def __init__(self):
@@ -26,18 +25,8 @@ class FeatureExtractor:
         """
         raise NotImplementedError
     
-    def align_labels_and_groups(
-        self, 
-        labels: np.ndarray,
-        groups: np.ndarray,
-        window_size: float, 
-        step_size: float, 
-        sampling_rate: int
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """
-        Align the labels and groups to the center of each sliding window over the DataFrame.
-        """
-        indices = list(sliding_windows_indices(labels, window_size, step_size, sampling_rate))
-        center_indices = [start + (end - start) // 2 for start, end in indices]
+    def __str__(self):
+        return f'{self.__class__.__name__}({self.__dict__})'
 
-        return labels[center_indices], groups[center_indices]
+    def __repr__(self):
+        return self.__str__()
